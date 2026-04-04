@@ -1,0 +1,32 @@
+# Compiled files
+target/
+*.class
+
+# IDE files
+.idea/
+*.iml
+.settings/
+.project
+.classpath
+.vscode/
+.mvn/
+
+# Log files
+*.log
+logs/
+
+# Uploaded files
+uploads/
+
+# Environment variables
+.env
+application-local.yml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Maven
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup

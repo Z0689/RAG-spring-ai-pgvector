@@ -1,0 +1,47 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/postgres
+    username: postgres
+    password: 123456
+    driver-class-name: org.postgresql.Driver
+
+  ai:
+    # 1. Ollama 配置：负责 Embedding 向量化
+    ollama:
+      base-url: http://localhost:11434
+      embedding:
+        enabled: true
+        options:
+          model: nomic-embed-text
+
+    # 2. OpenAI (DeepSeek) 配置：负责 Chat 对话
+    openai:
+      api-key: ${DEEPSEEK_API_KEY}
+      base-url: https://api.deepseek.com
+      chat:
+        options:
+          model: deepseek-chat
+          temperature: 0.7
+      # 禁用 OpenAI 的 embedding 功能
+      embedding:
+        enabled: false
+
+    # 3. PGVector 向量存储配置
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 768                    # nomic-embed-text 模型的向量维度
+        initialize-schema: true
+        remove-existing-vector-store-table: false
+        schema-name: public
+        table-name: vector_store
+
+server:
+  port: 8080
+
+logging:
+  level:
+    org.springframework.ai: DEBUG
+    org.springframework.jdbc: DEBUG
+
