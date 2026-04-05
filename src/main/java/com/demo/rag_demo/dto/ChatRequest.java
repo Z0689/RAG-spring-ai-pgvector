@@ -9,8 +9,11 @@ public class ChatRequest {
     @Size(min = 1, max = 500, message = "问题长度必须在1-500字符之间")
     private String question;
 
-    // 可选：会话ID，用于区分不同用户/会话
+    // 会话ID，用于区分不同用户/会话
     private String sessionId;
+
+    // 是否包含历史记录（默认 true）
+    private Boolean includeHistory = true;
 
     public String getQuestion() {
         return question;
@@ -26,5 +29,13 @@ public class ChatRequest {
 
     public void setSessionId(String sessionId) {
         this.sessionId = sessionId;
+    }
+
+    public Boolean getIncludeHistory() {
+        return includeHistory != null ? includeHistory : true;
+    }
+
+    public void setIncludeHistory(Boolean includeHistory) {
+        this.includeHistory = includeHistory;
     }
 }

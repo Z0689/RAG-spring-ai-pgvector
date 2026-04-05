@@ -2,14 +2,21 @@
 
 基于 Spring AI、PGVector、Ollama 和 DeepSeek 构建的 RAG（检索增强生成）知识库系统。
 
+## 📋 项目简介
+
+本项目是一个完整的 RAG（检索增强生成）知识库系统，支持上传多种格式的文档，通过向量检索 + 大语言模型实现智能问答。系统具备多轮对话记忆、文档管理、来源溯源等核心功能。
+
 ## ✨ 功能特性
 
-- 📄 **文档上传**：支持 PDF 文档上传和自动分块
+- 📄 **多格式文档支持**：PDF、Word（DOCX）、TXT、Markdown
 - 🔍 **智能检索**：基于向量相似度检索相关文档片段
-- 💬 **AI 问答**：基于检索结果生成高质量回答
+- 💬 **RAG 问答**：基于检索结果生成高质量回答
+- 🧠 **多轮对话记忆**：基于 Redis 的会话历史管理
+- 📚 **文档管理**：上传、列表、详情、删除、清空
 - 📊 **来源追溯**：返回答案的引用来源和相似度分数
 - 🚀 **高性能**：使用 PGVector 向量索引，毫秒级检索
 - 📝 **完善日志**：AOP 切面记录请求耗时，便于监控
+- 🛡️ **健壮性**： 统一异常处理、参数校验、操作日志
 
 ## 🛠️ 技术栈
 | 组件    | 技术                                      |
@@ -18,6 +25,8 @@
 | 向量数据库 | PostgreSQL 16 + PGVector                |
 | 向量化模型 | Ollama + nomic-embed-text               |
 | 对话模型  | DeepSeek API                            |
+| 对话存储 | Redis                                   |
+| 文档解析 | PDFBox + Apache POI                     |
 | 构建工具  | Maven                                   |
 | 容器化   | Docker                                  |
 
@@ -36,17 +45,19 @@ git clone https://github.com/你的用户名/rag-spring-ai-pgvector.git
 cd rag-spring-ai-pgvector
 ```
 
-### 2. 启动 PGVector 容器
+### 2. 启动依赖服务
 ```bash
+# 启动 PostgreSQL + pgvector
 docker run --name pgvector -e POSTGRES_PASSWORD=123456 -p 5432:5432 -d pgvector/pgvector:pg16
-```
 
-### 3. 拉取 Embedding 模型
-```bash
+# 启动 Redis
+docker run --name redis -p 6379:6379 -d redis:alpine
+
+# 启动 Ollama 并拉取 Embedding 模型
 ollama pull nomic-embed-text
 ```
 
-### 4. 配置 API Key
+### 3. 配置 API Key
 在 src/main/resources/application.yml 中配置 DeepSeek API Key：
 ```yaml
 spring:
@@ -59,24 +70,121 @@ spring:
 export DEEPSEEK_API_KEY=your-api-key
 ```
 
-### 5. 运行项目
+### 4. 运行项目
 ```bash
 mvn spring-boot:run
 ```
 
-### 6. 测试接口
-```bash
-# 健康检查
-curl http://localhost:8080/api/rag/health
-
-# 上传 PDF
-curl -X POST http://localhost:8080/api/rag/upload -F "file=@document.pdf"
-
-# 提问
-curl -X POST http://localhost:8080/api/rag/ask \
-  -H "Content-Type: application/json" \
-  -d '{"question": "这篇文章讲了什么？"}'
+## 📡 API 接口文档
+基础地址
+```text
+http://localhost:8080/api/rag
 ```
+### 1.健康检查
+#### GET /health
+响应示例：
+```json
+"RAG Service is running!"
+```
+
+### 2. 上传文档
+#### POST /upload
+
+|参数	|类型	|说明|
+|-------|-------|----|
+|file	|MultipartFile	|支持 PDF/DOCX/TXT/MD|
+响应示例：
+```json
+"文档处理完成！文件: 专利.docx, 类型: Word, 原始页数: 10, 分块数: 19, 耗时: 2566ms"
+```
+
+### 3. RAG 问答
+#### POST /ask
+
+请求体：
+```json
+{
+"question": "这篇文章主要讲了什么？",
+"sessionId": "可选，用于多轮对话",
+"includeHistory": true
+}
+```
+响应示例：
+```json
+{
+  "answer": "这篇文章介绍了...",
+  "sources": [
+    {
+      "content": "原文片段...",
+      "score": 0.85,
+      "documentName": "专利.docx",
+      "chunkIndex": 0
+    }
+  ],
+  "elapsedMs": 1234,
+  "sessionId": "550e8400-e29b-41d4-a716-446655440000",
+  "historyCount": 2
+}
+```
+### 4. 文档管理
+   - 获取文档列表
+   #### GET /documents
+
+响应示例：
+```json
+[
+{
+"fileName": "专利.docx",
+"chunkCount": 19,
+"uploadTime": 1743849622000,
+"fileSize": 399098,
+"fileType": "Word",
+"formattedFileSize": "389.74 KB",
+"formattedUploadTime": "2026-04-05 11:40:22"
+}
+]
+```
+
+- 获取文档详情
+#### GET /documents/{fileName}
+
+- 获取文档片段
+#### GET /documents/{fileName}/chunks?limit=10
+
+- 删除文档
+#### DELETE /documents/{fileName}
+
+- 清空所有文档
+#### DELETE /documents
+
+### 5. 对话历史管理
+   - 获取会话历史
+   #### GET /history/{sessionId}
+
+响应示例：
+```json
+[
+{
+"role": "user",
+"content": "什么是 RAG？",
+"timestamp": "2026-04-05 11:41:25"
+},
+{
+"role": "assistant",
+"content": "RAG 是检索增强生成...",
+"timestamp": "2026-04-05 11:41:31"
+}
+]
+```
+
+- 获取历史消息数量
+#### GET /history/{sessionId}/count
+
+- 检查会话是否存在
+#### GET /history/{sessionId}/exists
+
+- 清空会话历史
+#### DELETE /history/{sessionId}
 
 ## 📁 项目结构
 ```text
@@ -87,36 +195,6 @@ src/main/java/com/demo/rag_demo/
 ├── exception/       # 全局异常处理
 ├── aspect/          # AOP 日志切面
 └── config/          # 配置类
-```
-
-## 📝 API 接口文档
-
- | 方法   | 路径              | 描述        | 请求示例                |
- |------|-----------------|-----------|---------------------|
- | POST | /api/rag/upload | 上传 PDF 文档 | form-data: file     |
- | POST | /api/rag/ask    | RAG 问答    | {"question": "..."} |
- | GET  | /api/rag/health | 健康检查      | -                   |
- 
-### 问答请求示例
-```json
-{
-  "question": "这篇文章主要解决了什么问题？"
-}
-```
-
-### 问答响应示例
-```json
-{
-  "answer": "这篇文章主要介绍了一个名为 SchedCP 的框架...",
-  "sources": [
-    {
-      "content": "SchedCP is a secure control plane...",
-      "score": 0.66,
-      "documentName": "paper.pdf"
-    }
-  ],
-  "elapsedMs": 1234
-}
 ```
 
 ## ⚙️ 配置说明
@@ -140,12 +218,35 @@ spring:
         dimensions: 768
         index-type: HNSW
         distance-type: COSINE_DISTANCE
+    data:
+      redis:
+        host: localhost
+        port: 6379
+
+    server:
+      port: 8080
 ```
 
 ## 📊 效果展示
 ### 问答示例
 ![问答响应示例](./images/img.png)
 
+## 🔧 常见问题
+### Q: 上传文档后提问返回"未找到相关内容"？
+A: 检查以下几点：
+ - 确保 Ollama 正在运行：ollama list
+ - 确认 Embedding 模型已下载：ollama pull nomic-embed-text
+ - 降低相似度阈值（application.yml 中的 threshold）
+
+### Q: Redis 连接失败？
+A: 启动 Redis 容器：docker run --name redis -p 6379:6379 -d redis:alpine
+
+### Q: 多轮对话不生效？
+A: 确保第二轮请求携带了第一轮返回的 sessionId
+
+
 ## 🤝 贡献
 欢迎提交 Issue 和 Pull Request。
 
+## 📄 License
+MIT License

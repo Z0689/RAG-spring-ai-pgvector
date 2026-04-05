@@ -4,8 +4,10 @@ import java.util.List;
 
 public class ChatResponse {
     private String answer;
-    private List<Source> sources;  // 引用来源
-    private Long elapsedMs;        // 处理耗时（毫秒）
+    private List<Source> sources;
+    private Long elapsedMs;
+    private String sessionId;      // 返回会话ID
+    private Integer historyCount;  // 当前会话历史消息数
 
     public ChatResponse() {}
 
@@ -19,6 +21,15 @@ public class ChatResponse {
         this.answer = answer;
         this.sources = sources;
         this.elapsedMs = elapsedMs;
+    }
+
+    public ChatResponse(String answer, List<Source> sources, Long elapsedMs,
+                        String sessionId, Integer historyCount) {
+        this.answer = answer;
+        this.sources = sources;
+        this.elapsedMs = elapsedMs;
+        this.sessionId = sessionId;
+        this.historyCount = historyCount;
     }
 
     // Getters and Setters
@@ -44,5 +55,21 @@ public class ChatResponse {
 
     public void setElapsedMs(Long elapsedMs) {
         this.elapsedMs = elapsedMs;
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(String sessionId) {
+        this.sessionId = sessionId;
+    }
+
+    public Integer getHistoryCount() {
+        return historyCount;
+    }
+
+    public void setHistoryCount(Integer historyCount) {
+        this.historyCount = historyCount;
     }
 }

@@ -41,20 +41,21 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 处理业务异常
+     * 处理业务异常（包括 404）
      */
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(
             BusinessException e, HttpServletRequest request) {
 
-        log.warn("业务异常: {}, path: {}", e.getMessage(), request.getRequestURI());
+        log.warn("业务异常: code={}, message={}, path={}", e.getCode(), e.getMessage(), request.getRequestURI());
 
+        int statusCode = e.getCode() == 404 ? 404 : 400;
         ErrorResponse error = new ErrorResponse(
-                e.getCode(),
+                statusCode,
                 e.getMessage(),
                 request.getRequestURI()
         );
-        return ResponseEntity.badRequest().body(error);
+        return ResponseEntity.status(statusCode).body(error);
     }
 
     /**
